@@ -1,5 +1,6 @@
 {
   "project": "deep-space-habitat",
+  "field_bit_width": 16,
   "requirements": [
     {
       "reqid": "HAB-O2-001",
@@ -12,7 +13,8 @@
       "target_var": "o2_pressure",
       "target_op": ">=",
       "target_value": 195,
-      "scale_factor": 10
+      "scale_factor": 10,
+      "bit_width": 16
     }
   ]
 }
