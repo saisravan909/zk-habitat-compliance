@@ -1,6 +1,8 @@
+
 pragma circom 2.1.6;
 
 include "circomlib/circuits/bitify.circom";
+include "circomlib/circuits/comparators.circom";
 
 // Auto-generated range-checked compliance circuit from FRET export.
 
@@ -12,8 +14,12 @@ template HabitatComplianceCheck() {
     signal output all_constraints_satisfied;
 
     // Requirement HAB-O2-001: In habitat_mode life_support shall always satisfy o2_pressure >= 195
-    signal input HAB_O2_001_cond_active;
-    // Boolean guard: habitat_mode_active == 1 -> HAB_O2_001_cond_active in {0, 1}
+    // Bind habitat_mode_active == 1 via IsEqual comparator
+    component HAB_O2_001_cond_eq = IsEqual();
+    HAB_O2_001_cond_eq.in[0] <== habitat_mode_active;
+    HAB_O2_001_cond_eq.in[1] <== 1;
+    signal HAB_O2_001_cond_active;
+    HAB_O2_001_cond_active <== HAB_O2_001_cond_eq.out;
     HAB_O2_001_cond_active * (1 - HAB_O2_001_cond_active) === 0;
     signal output HAB_O2_001_valid;
     signal input HAB_O2_001_slack_ge;
@@ -24,8 +30,12 @@ template HabitatComplianceCheck() {
     HAB_O2_001_range_ge.in <== HAB_O2_001_slack_ge;
     HAB_O2_001_valid <== 1 - HAB_O2_001_cond_active * (1 - HAB_O2_001_cond_active);
     // Requirement HAB-CO2-002: In habitat_mode life_support shall always satisfy co2_ppm <= 4000
-    signal input HAB_CO2_002_cond_active;
-    // Boolean guard: habitat_mode_active == 1 -> HAB_CO2_002_cond_active in {0, 1}
+    // Bind habitat_mode_active == 1 via IsEqual comparator
+    component HAB_CO2_002_cond_eq = IsEqual();
+    HAB_CO2_002_cond_eq.in[0] <== habitat_mode_active;
+    HAB_CO2_002_cond_eq.in[1] <== 1;
+    signal HAB_CO2_002_cond_active;
+    HAB_CO2_002_cond_active <== HAB_CO2_002_cond_eq.out;
     HAB_CO2_002_cond_active * (1 - HAB_CO2_002_cond_active) === 0;
     signal output HAB_CO2_002_valid;
     signal input HAB_CO2_002_slack_le;
@@ -35,8 +45,12 @@ template HabitatComplianceCheck() {
     HAB_CO2_002_range_le.in <== HAB_CO2_002_slack_le;
     HAB_CO2_002_valid <== 1 - HAB_CO2_002_cond_active * (1 - HAB_CO2_002_cond_active);
     // Requirement HAB-VALVE-003: In habitat_mode life_support shall always satisfy relief_valve_locked == 1
-    signal input HAB_VALVE_003_cond_active;
-    // Boolean guard: habitat_mode_active == 1 -> HAB_VALVE_003_cond_active in {0, 1}
+    // Bind habitat_mode_active == 1 via IsEqual comparator
+    component HAB_VALVE_003_cond_eq = IsEqual();
+    HAB_VALVE_003_cond_eq.in[0] <== habitat_mode_active;
+    HAB_VALVE_003_cond_eq.in[1] <== 1;
+    signal HAB_VALVE_003_cond_active;
+    HAB_VALVE_003_cond_active <== HAB_VALVE_003_cond_eq.out;
     HAB_VALVE_003_cond_active * (1 - HAB_VALVE_003_cond_active) === 0;
     signal output HAB_VALVE_003_valid;
     // When active, target_var must equal threshold
