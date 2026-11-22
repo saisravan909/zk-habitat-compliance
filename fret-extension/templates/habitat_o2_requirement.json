@@ -1,0 +1,18 @@
+{
+  "project": "deep-space-habitat",
+  "requirements": [
+    {
+      "reqid": "HAB-O2-001",
+      "fretish": "In habitat_mode life_support shall always satisfy o2_pressure >= 195",
+      "scope_mode": "life_support",
+      "timing": "always",
+      "condition_var": "habitat_mode_active",
+      "condition_op": "==",
+      "condition_value": 1,
+      "target_var": "o2_pressure",
+      "target_op": ">=",
+      "target_value": 195,
+      "scale_factor": 10
+    }
+  ]
+}
