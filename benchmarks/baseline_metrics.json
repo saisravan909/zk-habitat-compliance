@@ -1,0 +1,17 @@
+{
+  "scenario": "deep-space-habitat-life-support",
+  "target_conference": "NFM 2027",
+  "proving_system": "groth16-bn254",
+  "runs": [
+    {
+      "req_count": 1,
+      "constraints_count": 2,
+      "circuit_compile_ms": null,
+      "witness_gen_ms": null,
+      "proof_gen_ms": null,
+      "proof_verify_ms": null,
+      "proof_size_bytes": null,
+      "notes": "Populate after running snarkjs/circom harness"
+    }
+  ]
+}
