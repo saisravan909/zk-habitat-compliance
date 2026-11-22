@@ -32,13 +32,18 @@ def build_requirement_block(req: dict, default_bits: int) -> tuple[list[str], li
         raise ValueError(f"Unsupported condition operator: {cond_op}")
 
     input_vars = [cond_var, target_var]
+    eq_cmp = f"{req_id}_cond_eq"
     cond_active = f"{req_id}_cond_active"
     valid_flag = f"{req_id}_valid"
 
     lines = [
         f"    // Requirement {req.get('reqid')}: {req.get('fretish', '')}",
-        f"    signal input {cond_active};",
-        f"    // Boolean guard: {cond_var} == {cond_val} -> {cond_active} in {{0, 1}}",
+        f"    // Bind {cond_var} == {cond_val} via IsEqual comparator",
+        f"    component {eq_cmp} = IsEqual();",
+        f"    {eq_cmp}.in[0] <== {cond_var};",
+        f"    {eq_cmp}.in[1] <== {cond_val};",
+        f"    signal {cond_active};",
+        f"    {cond_active} <== {eq_cmp}.out;",
         f"    {cond_active} * (1 - {cond_active}) === 0;",
         f"    signal output {valid_flag};",
     ]
@@ -100,6 +105,7 @@ def translate_requirements(input_path: Path, output_path: Path) -> str:
         "pragma circom 2.1.6;",
         "",
         'include "circomlib/circuits/bitify.circom";',
+        'include "circomlib/circuits/comparators.circom";',
         "",
         "// Auto-generated range-checked compliance circuit from FRET export.",
         "",
