@@ -18,12 +18,19 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Generate range-checked Circom circuit from FRET template
+      - name: Verify single-requirement circuit generation
         run: |
           python fret-extension/fretish-to-zksnark/fret_to_circuit.py \
             --input fret-extension/templates/habitat_o2_requirement.json \
             --output /tmp/habitat_o2_compliance_ranged.circom
           test -s /tmp/habitat_o2_compliance_ranged.circom
+
+      - name: Verify multi-requirement circuit generation and diff
+        run: |
+          python fret-extension/fretish-to-zksnark/fret_to_circuit.py \
+            --input fret-extension/templates/habitat_multi_requirements.json \
+            --output /tmp/habitat_multi_compliance.circom
+          diff -u circuits/habitat_multi_compliance.circom /tmp/habitat_multi_compliance.circom
 
       - name: Run synthetic telemetry policy check
         run: |
