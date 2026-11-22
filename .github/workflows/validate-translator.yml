@@ -18,14 +18,14 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Verify single-requirement circuit generation
+      - name: Verify single-requirement IsEqual circuit generation and diff
         run: |
           python fret-extension/fretish-to-zksnark/fret_to_circuit.py \
             --input fret-extension/templates/habitat_o2_requirement.json \
             --output /tmp/habitat_o2_compliance_ranged.circom
-          test -s /tmp/habitat_o2_compliance_ranged.circom
+          diff -u circuits/habitat_o2_compliance_ranged.circom /tmp/habitat_o2_compliance_ranged.circom
 
-      - name: Verify multi-requirement circuit generation and diff
+      - name: Verify multi-requirement IsEqual circuit generation and diff
         run: |
           python fret-extension/fretish-to-zksnark/fret_to_circuit.py \
             --input fret-extension/templates/habitat_multi_requirements.json \
