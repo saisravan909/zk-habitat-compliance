@@ -1,0 +1,3 @@
+[submodule "fret-extension/upstream-fret"]
+	path = fret-extension/upstream-fret
+	url = https://github.com/NASA-SW-VnV/fret.git
