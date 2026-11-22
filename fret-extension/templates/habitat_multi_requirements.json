@@ -1,0 +1,48 @@
+{
+  "project": "deep-space-habitat-multi",
+  "field_bit_width": 16,
+  "requirements": [
+    {
+      "reqid": "HAB-O2-001",
+      "fretish": "In habitat_mode life_support shall always satisfy o2_pressure >= 195",
+      "scope_mode": "life_support",
+      "timing": "always",
+      "condition_var": "habitat_mode_active",
+      "condition_op": "==",
+      "condition_value": 1,
+      "target_var": "o2_pressure",
+      "target_op": ">=",
+      "target_value": 195,
+      "scale_factor": 10,
+      "bit_width": 16
+    },
+    {
+      "reqid": "HAB-CO2-002",
+      "fretish": "In habitat_mode life_support shall always satisfy co2_ppm <= 4000",
+      "scope_mode": "life_support",
+      "timing": "always",
+      "condition_var": "habitat_mode_active",
+      "condition_op": "==",
+      "condition_value": 1,
+      "target_var": "co2_ppm",
+      "target_op": "<=",
+      "target_value": 4000,
+      "scale_factor": 1,
+      "bit_width": 16
+    },
+    {
+      "reqid": "HAB-VALVE-003",
+      "fretish": "In habitat_mode life_support shall always satisfy relief_valve_locked == 1",
+      "scope_mode": "life_support",
+      "timing": "always",
+      "condition_var": "habitat_mode_active",
+      "condition_op": "==",
+      "condition_value": 1,
+      "target_var": "relief_valve_locked",
+      "target_op": "==",
+      "target_value": 1,
+      "scale_factor": 1,
+      "bit_width": 16
+    }
+  ]
+}
