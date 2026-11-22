@@ -1,0 +1,26 @@
+name: Validate FRET-to-Circuit Translator
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-translator:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run translator on sample FRET requirement
+        run: |
+          python fret-extension/fretish-to-zksnark/fret_to_circuit.py \
+            --input fret-extension/templates/habitat_o2_requirement.json \
+            --output /tmp/generated_check.circom
+          test -s /tmp/generated_check.circom
