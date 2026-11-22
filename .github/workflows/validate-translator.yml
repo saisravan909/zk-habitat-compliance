@@ -1,4 +1,4 @@
-name: Validate FRET-to-Circuit Translator
+name: Validate FRET-to-Circuit Tool Prototype
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test-translator:
+  validate-tool:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -18,9 +18,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run translator on sample FRET requirement
+      - name: Generate range-checked Circom circuit from FRET template
         run: |
           python fret-extension/fretish-to-zksnark/fret_to_circuit.py \
             --input fret-extension/templates/habitat_o2_requirement.json \
-            --output /tmp/generated_check.circom
-          test -s /tmp/generated_check.circom
+            --output /tmp/habitat_o2_compliance_ranged.circom
+          test -s /tmp/habitat_o2_compliance_ranged.circom
+
+      - name: Run synthetic telemetry policy check
+        run: |
+          python scripts/run_prototype_check.py
