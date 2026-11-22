@@ -11,7 +11,13 @@ def sanitize_identifier(name: str) -> str:
     return cleaned
 
 
-def build_constraint_lines(req: dict) -> tuple[list[str], list[str]]:
+def validate_bit_width(bits: int) -> int:
+    if not isinstance(bits, int) or bits < 1 or bits > 252:
+        raise ValueError(f"Invalid bit_width for BN254/finite-field range check: {bits}")
+    return bits
+
+
+def build_requirement_block(req: dict, default_bits: int) -> tuple[list[str], list[str], list[str]]:
     req_id = sanitize_identifier(req.get("reqid", "REQ_001"))
     cond_var = sanitize_identifier(req["condition_var"])
     cond_op = req.get("condition_op", "==")
@@ -20,43 +26,56 @@ def build_constraint_lines(req: dict) -> tuple[list[str], list[str]]:
     target_var = sanitize_identifier(req["target_var"])
     target_op = req.get("target_op", ">=")
     target_val = int(req["target_value"])
-
-    signals = sorted({cond_var, target_var, f"{req_id}_compliant"})
-    lines = [f"    // Requirement {req.get('reqid')}: {req.get('fretish', '')}"]
+    bits = validate_bit_width(int(req.get("bit_width", default_bits)))
 
     if cond_op != "==":
         raise ValueError(f"Unsupported condition operator: {cond_op}")
 
-    # condition_met is 1 when cond_var == cond_val, else 0 (requires helper in full circuit)
-    cond_helper = f"{req_id}_cond_active"
-    signals.append(cond_helper)
-    lines.append(f"    // Active when {cond_var} == {cond_val}")
-    lines.append(f"    signal input {cond_helper};")
-    lines.append(f"    {cond_helper} * (1 - {cond_helper}) === 0;")
+    input_vars = [cond_var, target_var]
+    cond_active = f"{req_id}_cond_active"
+    valid_flag = f"{req_id}_valid"
+
+    lines = [
+        f"    // Requirement {req.get('reqid')}: {req.get('fretish', '')}",
+        f"    signal input {cond_active};",
+        f"    // Boolean guard: {cond_var} == {cond_val} -> {cond_active} in {{0, 1}}",
+        f"    {cond_active} * (1 - {cond_active}) === 0;",
+        f"    signal output {valid_flag};",
+    ]
 
     if target_op == ">=":
-        diff_sig = f"{req_id}_slack_ge"
-        signals.append(diff_sig)
-        lines.append(f"    // Enforces {target_var} >= {target_val} when active")
-        lines.append(f"    signal input {diff_sig};")
-        lines.append(
-            f"    {cond_helper} * (({target_var} - {target_val}) - {diff_sig}) === 0;"
-        )
+        slack_var = f"{req_id}_slack_ge"
+        range_cmp = f"{req_id}_range_ge"
+        lines.extend([
+            f"    signal input {slack_var};",
+            f"    // When active, target_var - threshold equals non-negative slack",
+            f"    {cond_active} * (({target_var} - {target_val}) - {slack_var}) === 0;",
+            f"    // Range check prevents modular wraparound over finite field",
+            f"    component {range_cmp} = Num2Bits({bits});",
+            f"    {range_cmp}.in <== {slack_var};",
+            f"    {valid_flag} <== 1 - {cond_active} * (1 - {cond_active});",
+        ])
     elif target_op == "<=":
-        diff_sig = f"{req_id}_slack_le"
-        signals.append(diff_sig)
-        lines.append(f"    // Enforces {target_var} <= {target_val} when active")
-        lines.append(f"    signal input {diff_sig};")
-        lines.append(
-            f"    {cond_helper} * (({target_val} - {target_var}) - {diff_sig}) === 0;"
-        )
+        slack_var = f"{req_id}_slack_le"
+        range_cmp = f"{req_id}_range_le"
+        lines.extend([
+            f"    signal input {slack_var};",
+            f"    // When active, threshold - target_var equals non-negative slack",
+            f"    {cond_active} * (({target_val} - {target_var}) - {slack_var}) === 0;",
+            f"    component {range_cmp} = Num2Bits({bits});",
+            f"    {range_cmp}.in <== {slack_var};",
+            f"    {valid_flag} <== 1 - {cond_active} * (1 - {cond_active});",
+        ])
     elif target_op == "==":
-        lines.append(f"    // Enforces {target_var} == {target_val} when active")
-        lines.append(f"    {cond_helper} * ({target_var} - {target_val}) === 0;")
+        lines.extend([
+            f"    // When active, target_var must equal threshold",
+            f"    {cond_active} * ({target_var} - {target_val}) === 0;",
+            f"    {valid_flag} <== 1 - {cond_active} * (1 - {cond_active});",
+        ])
     else:
         raise ValueError(f"Unsupported target operator: {target_op}")
 
-    return signals, lines
+    return input_vars, [valid_flag], lines
 
 
 def translate_requirements(input_path: Path, output_path: Path) -> str:
@@ -65,33 +84,47 @@ def translate_requirements(input_path: Path, output_path: Path) -> str:
     if not requirements:
         raise ValueError("No requirements found in input JSON.")
 
-    all_signals: set[str] = set()
+    default_bits = validate_bit_width(int(data.get("field_bit_width", 16)))
+
+    all_inputs: set[str] = set()
+    all_valid_signals: list[str] = []
     body_blocks: list[str] = []
 
     for req in requirements:
-        sigs, lines = build_constraint_lines(req)
-        all_signals.update(sigs)
+        req_inputs, req_valid, lines = build_requirement_block(req, default_bits)
+        all_inputs.update(req_inputs)
+        all_valid_signals.extend(req_valid)
         body_blocks.append("\n".join(lines))
-
-    input_signals = sorted(
-        s for s in all_signals if not s.endswith("_compliant") and "_slack_" not in s and "_cond_active" not in s
-    )
 
     template = [
         "pragma circom 2.1.6;",
         "",
-        "// Auto-generated draft compliance circuit template from FRET export.",
-        "// Pair range-check gadgets (e.g., Num2Bits) on slack signals in full proofs.",
+        'include "circomlib/circuits/bitify.circom";',
+        "",
+        "// Auto-generated range-checked compliance circuit from FRET export.",
         "",
         "template HabitatComplianceCheck() {",
     ]
-    for sig in input_signals:
+    for sig in sorted(all_inputs):
         template.append(f"    signal input {sig};")
     template.append("    signal output all_constraints_satisfied;")
     template.append("")
     template.extend(body_blocks)
     template.append("")
-    template.append("    all_constraints_satisfied <== 1;")
+
+    if len(all_valid_signals) == 1:
+        template.append(f"    all_constraints_satisfied <== {all_valid_signals[0]};")
+    else:
+        acc_var = "req_acc_0"
+        template.append(f"    signal {acc_var};")
+        template.append(f"    {acc_var} <== {all_valid_signals[0]} * {all_valid_signals[1]};")
+        for idx in range(2, len(all_valid_signals)):
+            prev_acc = f"req_acc_{idx - 2}"
+            cur_acc = f"req_acc_{idx - 1}"
+            template.append(f"    signal {cur_acc};")
+            template.append(f"    {cur_acc} <== {prev_acc} * {all_valid_signals[idx]};")
+        template.append(f"    all_constraints_satisfied <== req_acc_{len(all_valid_signals) - 2};")
+
     template.append("}")
     template.append("")
     template.append("component main = HabitatComplianceCheck();")
@@ -104,7 +137,7 @@ def translate_requirements(input_path: Path, output_path: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Translate FRET JSON requirements into a draft ZK circuit template."
+        description="Translate FRET JSON requirements into a range-checked ZK circuit."
     )
     parser.add_argument(
         "--input",
@@ -115,7 +148,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("circuits/habitat_o2_compliance_draft.circom"),
+        default=Path("circuits/habitat_o2_compliance_ranged.circom"),
         help="Destination path for generated circuit template",
     )
     args = parser.parse_args()
