@@ -35,3 +35,7 @@ jobs:
       - name: Run synthetic telemetry policy check
         run: |
           python scripts/run_prototype_check.py
+
+      - name: Run deterministic and seeded synthetic evaluator-circuit check
+        run: |
+          python scripts/verify_evaluator_circuit.py --seed 20270111 --num-cases 250 --spec-id habitat_multi_compliance
